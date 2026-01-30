@@ -42,15 +42,51 @@ def create_viewport(df, show_indicators=True, trade_state=None):
     for ind in selected_indicators:
         if ind not in df.columns:
             # Maybe it's a multi-column indicator?
-            # e.g., BBands produces BBL, BBM, BBU.
-            # Handle specific cases
-            if 'BBM' in ind: # Bollinger Bands
-                # Draw Upper and Lower
+            
+            # Bollinger Bands
+            if 'BBM' in ind: 
+                # Draw Upper and Lower with Fill
                 upper = ind.replace('BBM', 'BBU')
                 lower = ind.replace('BBM', 'BBL')
+                
                 if upper in df.columns and lower in df.columns:
-                    fig.add_trace(go.Scatter(x=df.index, y=df[upper], line=dict(color='rgba(255, 255, 255, 0.3)', width=1), name="BB Upper"), row=1, col=1)
-                    fig.add_trace(go.Scatter(x=df.index, y=df[lower], line=dict(color='rgba(255, 255, 255, 0.3)', width=1), name="BB Lower"), row=1, col=1)
+                    # Draw Lower (invisible basis for fill)
+                    fig.add_trace(go.Scatter(
+                        x=df.index, y=df[lower], 
+                        line=dict(width=0), 
+                        mode='lines',
+                        showlegend=False,
+                        name="BB Lower"
+                    ), row=1, col=1)
+                    
+                    # Draw Upper (fill to lower)
+                    fig.add_trace(go.Scatter(
+                        x=df.index, y=df[upper], 
+                        fill='tonexty',
+                        fillcolor='rgba(0, 184, 217, 0.1)', # Cyan low opacity
+                        line=dict(color='rgba(0, 184, 217, 0.5)', width=1), 
+                        name="Bollinger Bands"
+                    ), row=1, col=1)
+                    
+                    # Draw Lower Line explicitly if needed or just let the fill border handle it? 
+                    # Let's add the lower line same color
+                    fig.add_trace(go.Scatter(
+                        x=df.index, y=df[lower], 
+                        line=dict(color='rgba(0, 184, 217, 0.5)', width=1), 
+                        showlegend=False,
+                        name="BB Lower"
+                    ), row=1, col=1)
+                
+                # Also draw the Middle Band (the value itself)
+                # But typically BBM is an SMA. We can plot it if it is in columns (it is not 'ind' because ind IS BBM column name)
+                # If ind in columns (Wait, ind IS in columns for BB selection? No, usually ind matches dropdown value)
+                # If dropdown value is BBM_20_2.0_2.0, AND that is in columns.
+                # So we should check if 'BBM' in ind AND ind in columns?
+                # Actually, the logic "ind not in df.columns" triggers this block.
+                # But I updated settings, so ind MIGHT BE in columns now.
+                # So I should move these handlers *outside* the "not in" check or inside generic loop.
+                pass
+
             
             if 'MACD' in ind: # MACD
                 # Draw MACD and Signal
@@ -73,7 +109,94 @@ def create_viewport(df, show_indicators=True, trade_state=None):
                 
             continue
 
-        # Color assignment
+        # Indicator IS in columns (or we corrected the name mapping)
+        
+        # SUPERTREND Handling
+        if 'SUPERT' in ind and 'SUPERTd' in ind.replace('SUPERT', 'SUPERTd'): # Check if direction column exists
+            # ind is e.g. 'SUPERT_7_3.0'
+            dir_col = ind.replace('SUPERT_', 'SUPERTd_') # e.g. SUPERTd_7_3.0
+            if dir_col in df.columns:
+                # Plot separate traces for Up (Green) and Down (Red)
+                # Create masks
+                up_mask = df[dir_col] > 0
+                down_mask = df[dir_col] < 0
+                
+                # 1. Plot the connectors (Thin White Line)
+                # We plot the entire line first. The colored segments will cover it, 
+                # but the gaps (jumps) will remain white.
+                fig.add_trace(go.Scatter(
+                    x=df.index, y=df[ind],
+                    mode='lines',
+                    line=dict(color='white', width=1),
+                    showlegend=False,
+                    hoverinfo='skip',
+                    name="Supertrend Base"
+                ), row=1, col=1)
+                
+                # Up Trend (Green)
+                # To prevent Plotly from connecting separate green segments across a red gap,
+                # we must provide the FULL index but set Y-values to None (or NaN) where it's not green.
+                # Plotly breaks lines at None/NaN.
+                
+                up_series = df[ind].copy()
+                up_series[~up_mask] = None
+                
+                fig.add_trace(go.Scatter(
+                    x=df.index, y=up_series, 
+                    mode='lines',
+                    line=dict(color='#00E676', width=3), 
+                    name="Supertrend Up"
+                ), row=1, col=1)
+                
+                # Down Trend (Red)
+                down_series = df[ind].copy()
+                down_series[~down_mask] = None
+                
+                fig.add_trace(go.Scatter(
+                    x=df.index, y=down_series, 
+                    mode='lines',
+                    line=dict(color='#FF1744', width=3), 
+                    name="Supertrend Down"
+                ), row=1, col=1)
+                continue
+
+        # Bollinger Bands Handling (if ind IS in columns, which it is now)
+        if 'BBM' in ind:
+             # Draw Upper and Lower bounds
+            upper = ind.replace('BBM', 'BBU')
+            lower = ind.replace('BBM', 'BBL')
+            
+            if upper in df.columns and lower in df.columns:
+                # Lower (invisible for fill)
+                fig.add_trace(go.Scatter(
+                    x=df.index, y=df[lower], 
+                    line=dict(width=0), 
+                    showlegend=False,
+                    hoverinfo='skip',
+                    mode='lines'
+                ), row=1, col=1)
+                
+                # Upper (fill, colored)
+                fig.add_trace(go.Scatter(
+                    x=df.index, y=df[upper], 
+                    fill='tonexty', 
+                    fillcolor='rgba(0, 184, 217, 0.15)',
+                    line=dict(color='rgba(0, 184, 217, 0.3)', width=1), 
+                    name="Bollinger Bands"
+                ), row=1, col=1)
+                 # Lower (visible line)
+                fig.add_trace(go.Scatter(
+                    x=df.index, y=df[lower], 
+                    line=dict(color='rgba(0, 184, 217, 0.3)', width=1), 
+                    showlegend=False,
+                    mode='lines'
+                ), row=1, col=1)
+            
+            # Draw the Middle Band (the indicator itself)
+            fig.add_trace(go.Scatter(x=df.index, y=df[ind], line=dict(color='#00B8D9', width=1, dash='dash'), name="BB Mid"), row=1, col=1)
+            continue
+            
+        # Standard Plotting for others
         c = colors[color_idx % len(colors)]
         color_idx += 1
         

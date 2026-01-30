@@ -47,7 +47,7 @@ def settings_layout():
                     {'label': 'Hull Moving Average (21)', 'value': 'HMA_21'},
                     {'label': 'Volume Weighted Average Price (VWAP)', 'value': 'VWAP_D'},
                     {'label': 'Supertrend', 'value': 'SUPERT_7_3.0'},
-                    {'label': 'Bollinger Bands', 'value': 'BBM_20_2.0'},
+                    {'label': 'Bollinger Bands', 'value': 'BBM_20_2.0_2.0'},
                     {'label': 'Keltner Channels', 'value': 'KC_20_2'},
                     {'label': 'Donchian Channels', 'value': 'DCM_20_20'},
                     {'label': 'Relative Strength Index (RSI)', 'value': 'RSI_14'},
@@ -59,7 +59,7 @@ def settings_layout():
                     {'label': 'On-Balance Volume (OBV)', 'value': 'OBV'},
                     {'label': 'Parabolic SAR', 'value': 'PSARl_0.02_0.2'}
                 ],
-                value=['SMA_20', 'SMA_50', 'BBM_20_2.0', 'SUPERT_7_3.0', 'MACD_12_26_9'],
+                value=['SMA_20', 'SMA_50', 'BBM_20_2.0_2.0', 'SUPERT_7_3.0', 'MACD_12_26_9'],
                 multi=True,
                 placeholder="Select indicators...",
                 style={'color': '#000'}

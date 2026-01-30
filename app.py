@@ -27,7 +27,7 @@ app._favicon = None # Prevent favicon 404 annoying logs
 app.layout = html.Div([
     html.Div([
         html.Div([
-            dcc.Graph(id='main-viewport', figure=create_viewport(current_df.iloc[:50], show_indicators=['SMA_20', 'SMA_50', 'BBM_20_2.0', 'SUPERT_7_3.0', 'MACD_12_26_9'])),
+            dcc.Graph(id='main-viewport', figure=create_viewport(current_df.iloc[:50], show_indicators=['SMA_20', 'SMA_50', 'BBM_20_2.0_2.0', 'SUPERT_7_3.0', 'MACD_12_26_9'])),
             controls_layout()
         ], className='main-chart-area'),
         
