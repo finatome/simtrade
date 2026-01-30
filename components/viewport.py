@@ -40,74 +40,89 @@ def create_viewport(df, show_indicators=True, trade_state=None):
     color_idx = 0
     
     for ind in selected_indicators:
-        if ind not in df.columns:
-            # Maybe it's a multi-column indicator?
-            
-            # Bollinger Bands
-            if 'BBM' in ind: 
-                # Draw Upper and Lower with Fill
-                upper = ind.replace('BBM', 'BBU')
-                lower = ind.replace('BBM', 'BBL')
-                
-                if upper in df.columns and lower in df.columns:
-                    # Draw Lower (invisible basis for fill)
-                    fig.add_trace(go.Scatter(
-                        x=df.index, y=df[lower], 
-                        line=dict(width=0), 
-                        mode='lines',
-                        showlegend=False,
-                        name="BB Lower"
-                    ), row=1, col=1)
-                    
-                    # Draw Upper (fill to lower)
-                    fig.add_trace(go.Scatter(
-                        x=df.index, y=df[upper], 
-                        fill='tonexty',
-                        fillcolor='rgba(0, 184, 217, 0.1)', # Cyan low opacity
-                        line=dict(color='rgba(0, 184, 217, 0.5)', width=1), 
-                        name="Bollinger Bands"
-                    ), row=1, col=1)
-                    
-                    # Draw Lower Line explicitly if needed or just let the fill border handle it? 
-                    # Let's add the lower line same color
-                    fig.add_trace(go.Scatter(
-                        x=df.index, y=df[lower], 
-                        line=dict(color='rgba(0, 184, 217, 0.5)', width=1), 
-                        showlegend=False,
-                        name="BB Lower"
-                    ), row=1, col=1)
-                
-                # Also draw the Middle Band (the value itself)
-                # But typically BBM is an SMA. We can plot it if it is in columns (it is not 'ind' because ind IS BBM column name)
-                # If ind in columns (Wait, ind IS in columns for BB selection? No, usually ind matches dropdown value)
-                # If dropdown value is BBM_20_2.0_2.0, AND that is in columns.
-                # So we should check if 'BBM' in ind AND ind in columns?
-                # Actually, the logic "ind not in df.columns" triggers this block.
-                # But I updated settings, so ind MIGHT BE in columns now.
-                # So I should move these handlers *outside* the "not in" check or inside generic loop.
-                pass
 
+        # --- SPECIAL INDICATOR HANDLERS ---
+        
+        # MACD (Line, Signal, Histogram)
+        if 'MACD' in ind: 
+            # We assume df has MACD_..., MACDs_..., MACDh_...
+            # The dropdown value matches the main MACD column.
+            # We can find the others by prefix matching or assumption.
+            # Step 450 showed columns: MACD_12_26_9, MACDh_12_26_9, MACDs_12_26_9
             
-            if 'MACD' in ind: # MACD
-                # Draw MACD and Signal
-                macd = df['MACD_12_26_9']
-                signal = df['MACDs_12_26_9']
-                hist = df['MACDh_12_26_9']
-                fig.add_trace(go.Scatter(x=df.index, y=macd, line=dict(color='#2979FF', width=1.5), name="MACD"), row=2, col=1)
-                fig.add_trace(go.Scatter(x=df.index, y=signal, line=dict(color='#FF1744', width=1.5), name="Signal"), row=2, col=1)
-                fig.add_bar(x=df.index, y=hist, name="Hist", row=2, col=1)
-                continue
+            # Construct names based on standard suffix if needed, 
+            # or just rely on the columns existing.
+            # Since ind IS 'MACD_12_26_9', we can guess others.
+            
+            macd_col = ind
+            signal_col = ind.replace('MACD_', 'MACDs_')
+            hist_col = ind.replace('MACD_', 'MACDh_')
+            
+            # Verify they exist (or try to find them if naming is different)
+            if macd_col in df.columns and signal_col in df.columns and hist_col in df.columns:
+                macd = df[macd_col]
+                signal = df[signal_col]
+                hist = df[hist_col]
+                
+                # Dynamic Histogram Colors
+                hist_colors = ['#00E676' if v >= 0 else '#FF1744' for v in hist]
+                
+                fig.add_trace(go.Bar(
+                    x=df.index, y=hist,
+                    marker_color=hist_colors,
+                    opacity=0.4,
+                    name="MACD Hist"
+                ), row=2, col=1)
+                
+                fig.add_trace(go.Scatter(
+                    x=df.index, y=macd, 
+                    line=dict(color='#2979FF', width=2), 
+                    name="MACD Line"
+                ), row=2, col=1)
+                
+                fig.add_trace(go.Scatter(
+                    x=df.index, y=signal, 
+                    line=dict(color='#FF9100', width=2), 
+                    name="Signal Line"
+                ), row=2, col=1)
+                
+                # Add Zero Line
+                fig.add_hline(y=0, line_color="gray", line_width=1, line_dash="solid", row=2, col=1)
+            continue
 
-            if 'STOCH' in ind:
-                k = df['STOCHk_14_3_3']
-                d = df['STOCHd_14_3_3']
+        # Stochastic (K, D)
+        if 'STOCH' in ind:
+            # ind is typically STOCHk_...
+            if 'STOCHk' in ind:
+                k_col = ind
+                d_col = ind.replace('STOCHk', 'STOCHd')
+            else:
+                # If they selected STOCHd? unlikely given settings.
+                k_col = ind.replace('STOCHd', 'STOCHk')
+                d_col = ind
+            
+            if k_col in df.columns and d_col in df.columns:
+                k = df[k_col]
+                d = df[d_col]
                 fig.add_trace(go.Scatter(x=df.index, y=k, line=dict(color='#2979FF', width=1.5), name="Stoch %K"), row=2, col=1)
                 fig.add_trace(go.Scatter(x=df.index, y=d, line=dict(color='#FF1744', width=1.5), name="Stoch %D"), row=2, col=1)
                 fig.add_hline(y=80, line_dash="dot", line_color="gray", row=2, col=1)
                 fig.add_hline(y=20, line_dash="dot", line_color="gray", row=2, col=1)
-                continue
-                
             continue
+
+        if ind not in df.columns:
+            # Handle multi-column indicators that might NOT be in columns by their exact name
+            # e.g. Bollinger Bands if ind was 'Bollinger Bands' (but it is BBM_...)
+            
+            # Bollinger Bands (handled below explicitly now, so this might be redundant but safe)
+            if 'BBM' in ind: 
+                # This block was moving, so I'll leave the logic to the main BB handler below 
+                # or just let it pass through to the BB handler.
+                pass 
+                
+            # If we really can't find it, skip
+            pass
+
 
         # Indicator IS in columns (or we corrected the name mapping)
         
